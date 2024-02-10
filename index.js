@@ -47,6 +47,7 @@ const getURL = async (req, res, tURL, route) => {
 		'Accept-Encoding': 'gzip, deflate, br',
 		'Accept-Language': 'ru,en-US;q=0.9,en;q=0.8,ru-RU;q=0.7',
 		'Connection': 'keep-alive',
+		'Origin': process.env.O,
 		'Sec-Fetch-Dest': 'empty',
 		'Sec-Fetch-Mode': 'cors',
 		'Sec-Fetch-Site': 'cross-site',

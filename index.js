@@ -89,10 +89,10 @@ const server = http.createServer((req, res) => {
 	  return
   } */
 
-  const params1 = (req.url.split('?')[1]);
+  const params1 = req.url.split('?')[1];
   console.log(params1);
   
-  const params = params1.split('.')[0] || '';
+  const params = params1 ? params1.split('.')[0] : '';
   console.log(params);
   
   if (req.url === '/') {

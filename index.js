@@ -18,27 +18,43 @@ const TARGET_URL = {
 
 const cache = {};
 
-const sendRespond = (req,res, url) => {
-	
-	res.writeHead(301,{
-	   "Location": url,
-		"Access-Control-Allow-Origin": "*"
-	});
-	res.end();
-	return
-	
-}
-
 const sendRespond404 = (res) => {
 	
 	res.writeHead(404, { 'Content-Type': 'text/html' });
 	res.write('Not found');
 	res.end();
-	return
+
 }
 
-const getURL = async (req, res, tURL, route) => {
+const sendRespondJSON = (res, token = Date.now()) => {
+	
+	const preparePlaylist = {};
+	
+	const prepareChannelsJSON = channels.map( ch => ( 
+	      {
+     	    title: `${ch}`,
+	        file: `${urlBase}/${ch}${tokenBase}${token}`
+	      }	   
+	   )
+	 );
+	 
+	preparePlaylist.id = 'player';
+	preparePlaylist.file = prepareChannelsJSON;
+	
+	cache.timestamp = Date.now();
+	cache.jsonData = prepareChannelsJSON; 
+	
+	
+	console.log(cache);
+	
+	res.writeHead(200, { 'Content-Type': 'application/json' });
+	res.write(JSON.stringify(preparePlaylist));
+	res.end();
+	
+}
 
+const getURL = async (req, res, tURL) => {
+	
     const options = {
       headers: {
 		  
@@ -47,7 +63,6 @@ const getURL = async (req, res, tURL, route) => {
 		'Accept-Encoding': 'gzip, deflate, br',
 		'Accept-Language': 'ru,en-US;q=0.9,en;q=0.8,ru-RU;q=0.7',
 		'Connection': 'keep-alive',
-		'Origin': process.env.O,
 		'Sec-Fetch-Dest': 'empty',
 		'Sec-Fetch-Mode': 'cors',
 		'Sec-Fetch-Site': 'cross-site',
@@ -65,18 +80,7 @@ const getURL = async (req, res, tURL, route) => {
 		
 		const token = $('.player-container').attr('data-token');
 		
-		const channel = channels.find(ch => ch === route);
-				
-		const URL = `${urlBase}/${channel}${tokenBase}${token}`;
-			
-		console.log(URL);
-		
-		cache[route] = {
-			url: URL,
-			timestamp: Date.now()
-		};
-	   
-	sendRespond(req, res, URL);
+		sendRespondJSON(res, token);
 		
     } catch (error){
         console.log('error', error)
@@ -84,38 +88,65 @@ const getURL = async (req, res, tURL, route) => {
 };
 
 const server = http.createServer((req, res) => {
+
+
+    	// Set CORS headers
+	res.setHeader('Access-Control-Allow-Origin', '*');
+	res.setHeader('Access-Control-Request-Method', '*');
+	res.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET');
+	res.setHeader('Access-Control-Allow-Headers', '*');
 	
- /*  if (req.headers.origin !== process.env.O) {
-	  console.log(req.socket.remoteAddress);
-	  return
-  } */
-
-  const params1 = req.url.split('?')[1];
-  console.log(params1);
-  
-  const params = params1 ? params1.split('.')[0] : '';
-  console.log(params);
-  
-  if (req.url === '/') {
-	  res.writeHead(200, { 'Content-Type': 'text/html' });
-	  res.write('IP denied');
-	  res.end();
-	  
-  } else if (params && channels.includes(params)) {
-		
-		if (cache?.[params]?.url && ((Date.now() - cache?.[params]?.timestamp) < 1000 * 60 * 6)) {
-			console.log("From cache");
-			sendRespond(req, res, cache[params].url);
-		} else {
-			console.log("From source");
-			getURL(req, res, TARGET_URL.URL1, params);
-		}
-
-	} else {
-	  
-		sendRespond404(res);
+	if ( req.method === 'OPTIONS' ) {
+		res.writeHead(200);
+		res.end();
+		return;
 	}
+	
   
+ 
+	switch (req.url) {
+		case '/' : {
+			res.writeHead(200, { 'Content-Type': 'text/html' });
+			res.write('IP denied');
+			res.end()
+			break;
+		}
+		
+		case '/123456' : {
+			
+			if (req.method === 'POST') {
+				let body = '';
+				req.on('data', chunk => {
+				body += chunk.toString(); // convert Buffer to string
+			  });
+				req.on('end', () => {
+				console.log(JSON.parse(body));
+				//res.end('ok');
+			  });
+			
+			if (cache?.timestamp && (Date.now() - cache?.timestamp) < 1000 * 60) {
+				
+				console.log('From cache');
+				res.writeHead(200, { 'Content-Type': 'application/json' });
+				res.write(JSON.stringify(cache.jsonData));
+				res.end();
+				
+			  } else {
+			    
+				console.log('From source');
+				getURL(req, res, TARGET_URL.URL1);
+			   
+			  }
+		    }
+			
+			break;
+			
+		}
+		
+		default:  {
+			sendRespond404(res);
+		}
+	}
 });
 
 server.listen(PORT, () => console.log('Listening on port 4000'));
